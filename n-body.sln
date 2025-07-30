@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36212.18 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sdcb.NBody", "Sdcb.NBody\Sdcb.NBody.csproj", "{C2EBC4FF-C9D4-4F19-9638-B4090358741B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sdcb.NBody.Direct2D", "Sdcb.NBody.Direct2D\Sdcb.NBody.Direct2D.csproj", "{38CD92BA-B164-451F-A144-2A04A00F70BD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C2EBC4FF-C9D4-4F19-9638-B4090358741B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C2EBC4FF-C9D4-4F19-9638-B4090358741B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C2EBC4FF-C9D4-4F19-9638-B4090358741B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C2EBC4FF-C9D4-4F19-9638-B4090358741B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{38CD92BA-B164-451F-A144-2A04A00F70BD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{38CD92BA-B164-451F-A144-2A04A00F70BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{38CD92BA-B164-451F-A144-2A04A00F70BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{38CD92BA-B164-451F-A144-2A04A00F70BD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1D1E16FF-C0F0-4893-8481-167A37333EA9}
+	EndGlobalSection
+EndGlobal
