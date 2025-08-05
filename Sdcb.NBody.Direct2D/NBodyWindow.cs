@@ -1,5 +1,6 @@
 ﻿using FlysEngine;
 using FlysEngine.Desktop;
+using FlysEngine.Managers;
 using Sdcb.NBody;
 using Sdcb.NBody.Direct2D;
 using System;
@@ -8,7 +9,6 @@ using System.Linq;
 using System.Numerics;
 using System.Windows.Forms;
 using Vortice.Direct2D1;
-using Vortice.Direct2D1.Effects;
 using Vortice.DXGI;
 using Vortice.Mathematics;
 using Vortice.UIAnimation;
@@ -23,6 +23,7 @@ class NBodyWindow : RenderWindow
     const float RefDt = 0.015625f;
     ID2D1StrokeStyle1 _stroke;
     ID2D1Bitmap1? _bitmap;
+    ID2D1Bitmap1? _trailBitmap;  // Separate bitmap for trails (no glow)
     ID2D1Effect? _effect;
 
     public NBodyWindow(IEnumerable<SystemSnapshot> sys)
@@ -68,18 +69,22 @@ class NBodyWindow : RenderWindow
     protected override void OnCreateDeviceSizeResources()
     {
         ID2D1DeviceContext dc = XResource.RenderTarget;
-        _bitmap = dc.CreateBitmap(new SizeI(ClientSize.Width, ClientSize.Height), new BitmapProperties1
+        BitmapProperties1 bitmapProperties = new BitmapProperties1
         {
             BitmapOptions = BitmapOptions.Target,
             PixelFormat = new Vortice.DCommon.PixelFormat(Format.B8G8R8A8_UNorm, Vortice.DCommon.AlphaMode.Premultiplied),
             DpiX = 96,
             DpiY = 96
-        });
+        };
+
+        _bitmap = dc.CreateBitmap(new SizeI(ClientSize.Width, ClientSize.Height), bitmapProperties);
+        _trailBitmap = dc.CreateBitmap(new SizeI(ClientSize.Width, ClientSize.Height), bitmapProperties);
     }
 
     protected override void OnReleaseDeviceSizeResources()
     {
         _bitmap?.Dispose(); _bitmap = null;
+        _trailBitmap?.Dispose(); _trailBitmap = null;
     }
 
     protected override void OnUpdateLogic(float dt)
@@ -121,40 +126,49 @@ class NBodyWindow : RenderWindow
 
     protected override void OnDraw(ID2D1DeviceContext ctx)
     {
-        //ctx.Clear(new Color4(0.05f));
-        //DrawCore(ctx);
         using ID2D1Image oldBmp = ctx.Target;
-        ctx.Target = _bitmap;
-        DrawCore(ctx);
-        ctx.Transform = Matrix3x2.Identity;
-
-        ctx.Target = oldBmp;
-        ctx.Clear(new Color4(0.05f));
-        ctx.UnitMode = UnitMode.Pixels;
-        _effect!.SetInput(0, _bitmap, invalidate: true);
-        _effect!.SetValue((int)GaussianBlurProperties.StandardDeviation, 15.0f);
-
-        ctx.DrawImage(_effect!);
-        ctx.DrawImage(_bitmap!);
-        ctx.UnitMode = UnitMode.Dips;
-    }
-
-    private void DrawCore(ID2D1DeviceContext ctx)
-    {
-        ctx.Clear(Colors.Transparent);
 
         float allHeight = ctx.Size.Height;
         float allWidth = ctx.Size.Width;
-        ctx.Transform =
+        Matrix3x2 transform =
             Matrix3x2.CreateTranslation(allWidth / (float)_scale.Value * 0.5f, allHeight / (float)_scale.Value * 0.5f) *
             Matrix3x2.CreateScale((float)_scale.Value, (float)_scale.Value);
 
-        // --- Draw trails first, so bodies are on top ---
+        // --- Draw trails to separate bitmap (no glow) ---
+        ctx.Target = _trailBitmap;
+        ctx.Clear(Colors.Transparent);
+        ctx.Transform = transform;
         DrawPathsInBatches(ctx);
+        ctx.Transform = Matrix3x2.Identity;
 
-        // --- Then draw the bodies themselves ---
+        // --- Draw bodies to main bitmap (with glow) ---
+        ctx.Target = _bitmap;
+        ctx.Clear(Colors.Transparent);
+        ctx.Transform = transform;
         DrawBodies(ctx);
+        ctx.Transform = Matrix3x2.Identity;
+
+        // --- Composite final result ---
+        ctx.Target = oldBmp;
+        ctx.Clear(new Color4(0.05f));
+        ctx.UnitMode = UnitMode.Pixels;
+
+        // First draw the non-glowing trails
+        ctx.DrawImage(_trailBitmap!);
+
+        // Then draw the glowing bodies
+        _effect!.SetInput(0, _bitmap, invalidate: true);
+        _effect!.SetValue((int)GaussianBlurProperties.StandardDeviation, 15.0f);
+        ctx.DrawImage(_effect!);  // Glowing version
+        ctx.DrawImage(_bitmap!);  // Sharp version on top
+
+        ctx.UnitMode = UnitMode.Dips;
+        ctx.DrawText(
+            $"FPS: {RenderTimer.FramesPerSecond:0.00} Frame Time: {RenderTimer.DurationSinceLastFrame.TotalMilliseconds:0.00} NeededTrackCount: {neededTrackCount}", 
+            XResource.TextFormats[12], new Rect(0, 0, ctx.Size.Width, ctx.Size.Height), XResource.GetColor(Colors.White));
     }
+
+    int neededTrackCount = 0;
 
     /// <summary>
     /// Renders fading trails for all celestial bodies using time-based chunking.
@@ -186,6 +200,7 @@ class NBodyWindow : RenderWindow
                 // Group trajectory history into time-based chunks using extension method
                 // GroupedByTimeFromOldest returns chunks ordered from oldest to newest
                 IReadOnlyList<IReadOnlyList<Vector2>> trailChunks = props.TrackingHistory.GroupedByTimeFromOldest(maxTrailDuration, numChunks);
+                neededTrackCount = trailChunks.Sum(x => x.Count);
                 if (i >= trailChunks.Count)
                 {
                     continue; // No valid chunks to render

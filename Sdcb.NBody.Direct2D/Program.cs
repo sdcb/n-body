@@ -15,6 +15,9 @@ internal class Program
             Size = new System.Drawing.Size(1024, 768),
             Text = "星体运动模拟"
         };
-        RenderLoop.Run(sw, () => sw.Render(1, PresentFlags.None));
+        RenderLoop.Run(sw, () =>
+        {
+            sw.Render(1, PresentFlags.None);
+        });
     }
 }
