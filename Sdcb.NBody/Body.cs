@@ -13,5 +13,5 @@ public record Body(int Id, BodyType BodyType, double Mass) : IDisposable
     {
     }
 
-    public BodySnapshot GetSnapshot() => new BodySnapshot(Id, (float)State.Px, (float)State.Py, BodyType, (float)Mass);
+    public BodySnapshot GetSnapshot() => new(Id, (float)State.Px, (float)State.Py, BodyType, (float)Mass);
 }

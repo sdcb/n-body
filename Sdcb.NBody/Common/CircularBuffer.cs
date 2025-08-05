@@ -1,51 +1,36 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Numerics;
 
 namespace Sdcb.NBody.Common;
 
 /// <summary>
-/// 表示一个固定容量的循环缓冲区（或环形列表）。
-/// 当缓冲区满时，添加新元素会覆盖最早的元素。
+/// Represents a fixed-capacity circular buffer that implements IReadOnlyList<T>.
+/// When the buffer is full, adding a new element overwrites the oldest element.
 /// </summary>
-/// <typeparam name="T">缓冲区中元素的类型。</typeparam>
-public class CircularBuffer<T> : IEnumerable<T>
+/// <typeparam name="T">The type of elements in the buffer.</typeparam>
+public class CircularBuffer<T> : IReadOnlyList<T>
 {
     private readonly T[] _data;
-    private int _end; // 指向下一个要写入元素的位置（尾部）
+    private int _end; // 指向下一个要写入的位置 (尾部)
+    private int _start; // 指向第一个元素 (头部)
 
     /// <summary>
-    /// 获取缓冲区中实际存储的元素数量。
+    /// Gets the number of elements contained in the buffer.
     /// </summary>
     public int Count { get; private set; }
 
     /// <summary>
-    /// 获取缓冲区的总容量。
+    /// Gets the total capacity of the buffer.
     /// </summary>
     public int Capacity => _data.Length;
 
     /// <summary>
-    /// 获取一个值，该值指示缓冲区是否已满。
+    /// Gets a value indicating whether the buffer is full.
     /// </summary>
     public bool IsFull => Count == Capacity;
 
-    /// <summary>
-    /// 计算并获取第一个元素（头部）在内部数组中的索引。
-    /// </summary>
-    private int HeadIndex
-    {
-        get
-        {
-            if (Count == 0) return 0;
-            // 当 Count < Capacity 时，_end 就是 Count，结果为 0。
-            // 当缓冲区满时 (Count == Capacity)，_end 会循环，这个公式能正确计算出头部的索引。
-            return (_end - Count + Capacity) % Capacity;
-        }
-    }
-
-    /// <summary>
-    /// 初始化 <see cref="CircularBuffer{T}"/> 类的新实例。
-    /// </summary>
-    /// <param name="capacity">缓冲区的容量。必须为正数。</param>
-    /// <exception cref="ArgumentException">当容量小于等于 0 时抛出。</exception>
     public CircularBuffer(int capacity)
     {
         if (capacity <= 0)
@@ -53,42 +38,46 @@ public class CircularBuffer<T> : IEnumerable<T>
             throw new ArgumentException("Capacity must be a positive number.", nameof(capacity));
         }
         _data = new T[capacity];
+        _start = 0;
         _end = 0;
         Count = 0;
     }
 
     /// <summary>
-    /// 将一个新元素添加到缓冲区的尾部。
-    /// 如果缓冲区已满，此操作会覆盖最早的元素。
+    /// Adds an element to the buffer. If the buffer is full, the oldest element is overwritten.
     /// </summary>
-    /// <param name="item">要添加的元素。</param>
+    /// <param name="item">The element to add.</param>
     public void Add(T item)
     {
         _data[_end] = item;
         _end = (_end + 1) % Capacity;
 
-        if (Count < Capacity)
+        if (IsFull)
+        {
+            _start = (_start + 1) % Capacity; // 覆盖：移动头部指针
+        }
+        else
         {
             Count++;
         }
     }
 
     /// <summary>
-    /// 清空缓冲区中的所有元素。
+    /// Clears the buffer.
     /// </summary>
     public void Clear()
     {
-        // 只需重置计数器和指针即可，无需清除数组数据
         Count = 0;
+        _start = 0;
         _end = 0;
+        Array.Clear(_data, 0, _data.Length);
     }
 
     /// <summary>
-    /// 获取或设置指定逻辑索引处的元素。
-    /// 索引 0 是最早的元素，索引 Count-1 是最新的元素。
+    /// Gets or sets the element at the specified index.
     /// </summary>
-    /// <param name="index">元素的逻辑索引。</param>
-    /// <exception cref="IndexOutOfRangeException">当索引超出范围时抛出。</exception>
+    /// <param name="index">The zero-based index of the element to get or set.</param>
+    /// <returns>The element at the specified index.</returns>
     public T this[int index]
     {
         get
@@ -97,7 +86,7 @@ public class CircularBuffer<T> : IEnumerable<T>
             {
                 throw new IndexOutOfRangeException("Index is out of the valid range of the buffer.");
             }
-            int actualIndex = (HeadIndex + index) % Capacity;
+            int actualIndex = (_start + index) % Capacity;
             return _data[actualIndex];
         }
         set
@@ -106,56 +95,63 @@ public class CircularBuffer<T> : IEnumerable<T>
             {
                 throw new IndexOutOfRangeException("Index is out of the valid range of the buffer.");
             }
-            int actualIndex = (HeadIndex + index) % Capacity;
+            int actualIndex = (_start + index) % Capacity;
             _data[actualIndex] = value;
         }
     }
 
     /// <summary>
-    /// 获取缓冲区中的第一个（最早的）元素。
+    /// Gets the first element in the buffer.
     /// </summary>
-    /// <exception cref="InvalidOperationException">当缓冲区为空时抛出。</exception>
     public T First
     {
         get
         {
             if (Count == 0) throw new InvalidOperationException("Buffer is empty.");
-            return _data[HeadIndex];
+            return _data[_start];
         }
     }
 
     /// <summary>
-    /// 获取缓冲区中的最后一个（最新的）元素。
+    /// Gets the last element in the buffer.
     /// </summary>
-    /// <exception cref="InvalidOperationException">当缓冲区为空时抛出。</exception>
     public T Last
     {
         get
         {
             if (Count == 0) throw new InvalidOperationException("Buffer is empty.");
-            // _end 指向下一个要写入的位置，所以上一个写入的位置是 (_end - 1)
-            int lastIndex = (_end - 1 + Capacity) % Capacity;
+            int lastIndex = (_end == 0) ? Capacity - 1 : _end - 1;
             return _data[lastIndex];
         }
     }
 
     /// <summary>
-    /// 返回一个循环访问集合的枚举器。
+    /// Returns an enumerator that iterates through the buffer.
     /// </summary>
     public IEnumerator<T> GetEnumerator()
     {
-        int head = HeadIndex;
         for (int i = 0; i < Count; i++)
         {
-            yield return _data[(head + i) % Capacity];
+            yield return this[i];
         }
     }
 
     /// <summary>
-    /// 返回一个循环访问集合的枚举器。
+    /// Returns an enumerator that iterates through the buffer.
     /// </summary>
     IEnumerator IEnumerable.GetEnumerator()
     {
         return GetEnumerator();
+    }
+
+    /// <summary>
+    /// Returns an enumerator that iterates through the buffer in reverse order.
+    /// </summary>
+    public IEnumerable<T> Reverse()
+    {
+        for (int i = Count - 1; i >= 0; i--)
+        {
+            yield return this[i];
+        }
     }
 }

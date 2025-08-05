@@ -13,7 +13,7 @@ public class NBodySystem : IDisposable
     {
         _dt = def.Dt;
         _bodies = def.ToBodies();
-        _solver = new Ode45(_bodies, def.Dt);
+        _solver = new Ode45(_bodies, def.Dt, maxDt: def.Dt);
     }
 
     public void Dispose()
@@ -61,5 +61,5 @@ public class NBodySystem : IDisposable
         return q.GetConsumingEnumerable(cancellationToken);
     }
 
-    public SystemSnapshot GetSnapshot() => new SystemSnapshot((float)Elapsed, [.. _bodies.Select(x => x.GetSnapshot())]);
+    public SystemSnapshot GetSnapshot() => new((float)Elapsed, [.. _bodies.Select(x => x.GetSnapshot())]);
 }

@@ -1,21 +1,23 @@
-﻿using FlysEngine.Desktop;
+﻿using FlysEngine;
+using FlysEngine.Desktop;
+using Sdcb.NBody;
+using Sdcb.NBody.Direct2D;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Windows.Forms;
 using Vortice.Direct2D1;
+using Vortice.Direct2D1.Effects;
 using Vortice.DXGI;
 using Vortice.Mathematics;
 using Vortice.UIAnimation;
-
-namespace Sdcb.NBody.Direct2D;
 
 class NBodyWindow : RenderWindow
 {
     IEnumerator<SystemSnapshot> _system;
     SystemSnapshot _lastSnapshot;
-    BodyUIProps[] _uiProps;
+    BodyUIProps[] _uiBodies;
     float _speed = 1.0f, _acc = 0, initialScale = 1f;
     IUIAnimationVariable2 _scale;
     const float RefDt = 0.015625f;
@@ -28,16 +30,16 @@ class NBodyWindow : RenderWindow
         _system = sys.GetEnumerator();
         _system.MoveNext();
         _lastSnapshot = _system.Current;
-        _uiProps = new BodyUIProps[_lastSnapshot.Bodies.Length];
-        foreach ((Color4 color, int i) in GenerateColorMap().Take(_uiProps.Length).Select((color, i) => (color, i)))
+        _uiBodies = new BodyUIProps[_lastSnapshot.Bodies.Length];
+        foreach ((Color4 color, int i) in GenerateColorMap().Take(_uiBodies.Length).Select((color, i) => (color, i)))
         {
-            _uiProps[i] = new()
+            _uiBodies[i] = new()
             {
                 Color = color
             };
         }
         _scale = XResource.CreateAnimation(ClientSize.Height * initialScale, ClientSize.Height * initialScale, 0);
-        _stroke = XResource.Direct2DFactory.CreateStrokeStyle(new StrokeStyleProperties1 { StartCap = CapStyle.Triangle, EndCap = CapStyle.Triangle });
+        _stroke = XResource.Direct2DFactory.CreateStrokeStyle(new StrokeStyleProperties1 { StartCap = CapStyle.Flat, EndCap = CapStyle.Flat });
     }
 
     protected override void OnMouseWheel(MouseEventArgs e)
@@ -88,29 +90,26 @@ class NBodyWindow : RenderWindow
         {
             while (_acc < unit)
             {
-                _system.MoveNext();
-                _acc += _system.Current.Timestamp - _lastSnapshot.Timestamp;
+                if (!_system.MoveNext())
+                {
+                    // End of simulation data
+                    break;
+                }
+
+                // Calculate the time delta for this simulation step.
+                float snapshotDt = _system.Current.Timestamp - _lastSnapshot.Timestamp;
+                _acc += snapshotDt;
 
                 for (int i = 0; i < _system.Current.Bodies.Length; ++i)
                 {
                     BodySnapshot star = _system.Current.Bodies[i];
-                    BodyUIProps props = _uiProps[i];
+                    BodyUIProps props = _uiBodies[i];
 
                     Vector2 now = new(star.Px, star.Py);
-                    if (props.TrackingHistory.Count > 0)
-                    {
-                        Vector2 old = props.TrackingHistory.Last;
-                        float dist = Vector2.Distance(old, now);
-                        if (dist > 2 / _scale.Value)
-                        {
-                            props.TrackingHistory.Add(now);
-                        }
-                    }
-                    else
-                    {
-                        props.TrackingHistory.Add(now);
-                    }
+                    // Add the new point along with the time delta that led to it.
+                    props.TrackingHistory.Add(new TimedVector2(snapshotDt, now));
                 }
+                _lastSnapshot = _system.Current;
             }
         }
         catch (OperationCanceledException) // device lose
@@ -118,8 +117,6 @@ class NBodyWindow : RenderWindow
         }
 
         if (_acc >= unit) _acc -= unit;
-
-        _lastSnapshot = _system.Current;
     }
 
     protected override void OnDraw(ID2D1DeviceContext ctx)
@@ -152,32 +149,105 @@ class NBodyWindow : RenderWindow
             Matrix3x2.CreateTranslation(allWidth / (float)_scale.Value * 0.5f, allHeight / (float)_scale.Value * 0.5f) *
             Matrix3x2.CreateScale((float)_scale.Value, (float)_scale.Value);
 
-        // draw paths first
-        for (int i = 0; i < _lastSnapshot.Bodies.Length; ++i)
+        // --- Draw trails first, so bodies are on top ---
+        DrawPathsInBatches(ctx);
+
+        // --- Then draw the bodies themselves ---
+        DrawBodies(ctx);
+    }
+
+    /// <summary>
+    /// Renders fading trails for all celestial bodies using time-based chunking.
+    /// Each body's trail is divided into segments with gradient opacity and stroke width
+    /// to create a visually appealing fade effect from old to new positions.
+    /// </summary>
+    private void DrawPathsInBatches(ID2D1DeviceContext ctx)
+    {
+        // Trail rendering configuration
+        const float maxTrailDuration = 5.0f;  // Total duration of trail history to display (simulation time)
+        const int numChunks = 50;             // Number of segments for gradient effect
+
+        const float maxStrokeWidth = 0.02f;   // Stroke width for newest trail segments
+        const float minStrokeWidth = 0.005f;  // Stroke width for oldest trail segments
+        const float maxAlpha = 1.0f;          // Alpha for newest trail segments
+        const float minAlpha = 0.1f;          // Alpha for oldest trail segments
+
+        // Render each chunk with progressive gradient styling
+        for (int i = 0; i < numChunks; i++)
         {
-            BodySnapshot star = _lastSnapshot.Bodies[i];
-            BodyUIProps prop = _uiProps[i];
-
-            if (prop.TrackingHistory.Count < 2) continue;
-
-            using ID2D1PathGeometry1 path = XResource.Direct2DFactory.CreatePathGeometry();
-            using ID2D1GeometrySink sink = path.Open();
-            sink.BeginFigure(prop.TrackingHistory.First, FigureBegin.Hollow);
-            foreach ((int index, Vector2 pt) in prop.TrackingHistory.Index())
+            // Render trails for each celestial body
+            foreach (BodyUIProps props in _uiBodies)
             {
-                if (index > 0) { sink.AddLine(pt); }
+                if (props.TrackingHistory.Count < 2)
+                {
+                    continue; // Need at least 2 points to form a line segment
+                }
+
+                // Group trajectory history into time-based chunks using extension method
+                // GroupedByTimeFromOldest returns chunks ordered from oldest to newest
+                IReadOnlyList<IReadOnlyList<Vector2>> trailChunks = props.TrackingHistory.GroupedByTimeFromOldest(maxTrailDuration, numChunks);
+                if (i >= trailChunks.Count)
+                {
+                    continue; // No valid chunks to render
+                }
+
+                IReadOnlyList<Vector2> chunk = trailChunks[i];
+                if (chunk.Count == 0)
+                {
+                    continue;
+                }
+
+                // Calculate gradient progression from oldest (0.0) to newest (1.0)
+                float progress = (trailChunks.Count > 1) ? (float)i / (trailChunks.Count - 1) : 1.0f;
+
+                float currentStrokeWidth = minStrokeWidth + (maxStrokeWidth - minStrokeWidth) * progress;
+                float currentAlpha = minAlpha + (maxAlpha - minAlpha) * progress;
+                Color4 finalColor = new(props.Color.R, props.Color.G, props.Color.B, currentAlpha);
+
+                // Create path geometry on-demand for current chunk
+                using ID2D1PathGeometry1 path = XResource.Direct2DFactory.CreatePathGeometry();
+                using (ID2D1GeometrySink sink = path.Open())
+                {
+                    // Connect all points in the chunk to form a continuous line
+                    if (i == 0)
+                    {
+                        // First chunk: start from the first point
+                        sink.BeginFigure(chunk[0], FigureBegin.Hollow);
+                        for (int j = 1; j < chunk.Count; j++)
+                        {
+                            sink.AddLine(chunk[j]);
+                        }
+                    }
+                    else
+                    {
+                        // Subsequent chunks: connect from the last point of previous chunk
+                        sink.BeginFigure(trailChunks[i - 1][^1], FigureBegin.Hollow);
+                        for (int j = 0; j < chunk.Count; j++)
+                        {
+                            sink.AddLine(chunk[j]);
+                        }
+                    }
+                    sink.EndFigure(FigureEnd.Open);
+                    sink.Close();
+                }
+
+                // Render the path geometry with calculated style
+                ctx.DrawGeometry(path, XResource.GetColor(finalColor), currentStrokeWidth, _stroke);
             }
-            sink.EndFigure(FigureEnd.Open);
-            sink.Close();
-            ctx.DrawGeometry(path, XResource.GetColor(prop.Color), 0.02f);
         }
+    }
 
+    private void DrawBodies(ID2D1DeviceContext ctx)
+    {
         for (int i = 0; i < _lastSnapshot.Bodies.Length; ++i)
         {
             BodySnapshot star = _lastSnapshot.Bodies[i];
-            BodyUIProps prop = _uiProps[i];
-            using ID2D1GradientStopCollection collection = ctx.CreateGradientStopCollection(new[]
-            {
+            BodyUIProps prop = _uiBodies[i];
+            Vector2 center = new(star.Px, star.Py);
+            float radius = star.Size;
+
+            using ID2D1GradientStopCollection collection = ctx.CreateGradientStopCollection(
+            [
                 new GradientStop{ Color = Colors.White, Position = 0 },
                 new GradientStop{ Color = star.BodyType switch
                 {
@@ -185,15 +255,15 @@ class NBodyWindow : RenderWindow
                     BodyType.BlackHole => Colors.Black,
                     _ => Colors.Gray,
                 }, Position = 1 },
-            });
+            ]);
             using ID2D1RadialGradientBrush radialBrush = ctx.CreateRadialGradientBrush(new RadialGradientBrushProperties
             {
-                Center = new Vector2(star.Px, star.Py),
-                RadiusX = star.Size,
-                RadiusY = star.Size,
+                Center = center,
+                RadiusX = radius,
+                RadiusY = radius,
             }, collection);
 
-            ctx.FillEllipse(new Ellipse(new Vector2(star.Px, star.Py), star.Size, star.Size), radialBrush);
+            ctx.FillEllipse(new Ellipse(center, radius, radius), radialBrush);
         }
     }
 

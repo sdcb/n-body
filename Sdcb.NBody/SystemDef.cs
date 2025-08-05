@@ -26,8 +26,8 @@ public record SystemDef(BodyDef[] Bodies, double G = 1, double Dt = 1.0 / 80)
         double v = Math.Sqrt(v_squared) * scale;
 
         // 步骤 3: 创建星体数组
-        var stars = new BodyDef[N];
-        for (var i = 0; i < N; ++i)
+        BodyDef[] stars = new BodyDef[N];
+        for (int i = 0; i < N; ++i)
         {
             double angle = 2.0 * Math.PI * i / N;
 

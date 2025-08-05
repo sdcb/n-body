@@ -8,7 +8,7 @@ internal class Program
 {
     static void Main(string[] args)
     {
-        NBodySystem _sys = new(SystemDef.CreateSolarEarthMoon2());
+        NBodySystem _sys = new(SystemDef.CreateStableRing(3, scale: 0.9));
         using NBodyWindow sw = new(_sys.AutoStep(boundedCapacity: 512))
         {
             StartPosition = FormStartPosition.CenterScreen,
