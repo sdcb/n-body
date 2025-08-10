@@ -18,7 +18,7 @@ class NBodyWindow : RenderWindow
     IEnumerator<SystemSnapshot> _system;
     SystemSnapshot _lastSnapshot;
     BodyUIProps[] _uiBodies;
-    float _speed = 1.0f, _acc = 0, initialScale = 1f;
+    float _speed = 1.0f, _acc = 0, initialScale = 1.0f;
     IUIAnimationVariable2 _scale;
     const float RefDt = 0.015625f;
     ID2D1StrokeStyle1 _stroke;
@@ -165,7 +165,7 @@ class NBodyWindow : RenderWindow
         ctx.UnitMode = UnitMode.Dips;
         ctx.DrawText(
             $"FPS: {RenderTimer.FramesPerSecond:0.00} Frame Time: {RenderTimer.DurationSinceLastFrame.TotalMilliseconds:0.00} NeededTrackCount: {neededTrackCount}", 
-            XResource.TextFormats[12], new Rect(0, 0, ctx.Size.Width, ctx.Size.Height), XResource.GetColor(Colors.White));
+            XResource.TextFormats[24], new Rect(0, 0, ctx.Size.Width, ctx.Size.Height), XResource.GetColor(Colors.White));
     }
 
     int neededTrackCount = 0;
@@ -178,8 +178,8 @@ class NBodyWindow : RenderWindow
     private void DrawPathsInBatches(ID2D1DeviceContext ctx)
     {
         // Trail rendering configuration
-        const float maxTrailDuration = 5.0f;  // Total duration of trail history to display (simulation time)
-        const int numChunks = 50;             // Number of segments for gradient effect
+        const float maxTrailDuration = 20.0f;  // Total duration of trail history to display (simulation time)
+        const int numChunks = 100;             // Number of segments for gradient effect
 
         const float maxStrokeWidth = 0.02f;   // Stroke width for newest trail segments
         const float minStrokeWidth = 0.005f;  // Stroke width for oldest trail segments
