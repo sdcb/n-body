@@ -1,0 +1,50 @@
+name: build
+
+on:
+  push:
+    branches: [master, main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build
+        run: dotnet build n-body.slnx -c Release
+
+      - name: Test
+        run: dotnet test Sdcb.NBody.Tests -c Release --no-build
+
+      - name: Check shaders compile
+        run: Sdcb.NBody.App\bin\Release\net10.0-windows\NBody.exe --check-shaders
+
+      - name: Publish (Native AOT)
+        run: dotnet publish Sdcb.NBody.App/Sdcb.NBody.App.csproj -c Release -r win-x64 -o publish
+
+      - name: Package
+        shell: pwsh
+        run: |
+          Remove-Item publish\*.pdb
+          Compress-Archive -Path publish\NBody.exe, README.md, LICENSE.txt -DestinationPath NBody-win-x64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NBody-win-x64
+          path: NBody-win-x64.zip
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: NBody-win-x64.zip
+          generate_release_notes: true
