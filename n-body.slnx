@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Sdcb.NBody.Direct2D/Sdcb.NBody.Direct2D.csproj" />
+  <Project Path="Sdcb.NBody/Sdcb.NBody.csproj" />
+</Solution>

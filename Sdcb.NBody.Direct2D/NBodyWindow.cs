@@ -282,7 +282,11 @@ class NBodyWindow : RenderWindow
         }
     }
 
-    protected override void OnClosed(EventArgs e) => _system.Dispose();
+    protected override void OnFormClosed(FormClosedEventArgs e)
+    {
+        base.OnFormClosed(e);
+        _system.Dispose();
+    }
 
     static IEnumerable<Color4> GenerateColorMap()
     {
