@@ -101,6 +101,7 @@ internal sealed class NBodyApp : IDisposable
 
         int start = ScenarioRegistry.IndexOf(options.Scenario ?? AttractPlaylist[0]);
         if (options.NoAttract) _attract = false;
+        _model.Gallery = options.Gallery;
         LoadScenario(start >= 0 ? start : 0);
         _fade = 0;
     }

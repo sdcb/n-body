@@ -2,7 +2,7 @@ using Sdcb.NBody.App.Platform;
 
 namespace Sdcb.NBody.App;
 
-internal sealed record AppOptions(bool Windowed, string? Scenario, bool NoAttract, double CaptureAt, string? CapturePath, int Width, int Height)
+internal sealed record AppOptions(bool Windowed, string? Scenario, bool NoAttract, double CaptureAt, string? CapturePath, int Width, int Height, bool Gallery = false)
 {
     public static AppOptions Parse(string[] args)
     {
@@ -19,7 +19,8 @@ internal sealed record AppOptions(bool Windowed, string? Scenario, bool NoAttrac
             double.TryParse(Value("--capture-at"), System.Globalization.CultureInfo.InvariantCulture, out double t) ? t : 6,
             capture,
             int.TryParse(Value("--width"), out int w) ? w : 1600,
-            int.TryParse(Value("--height"), out int h) ? h : 900);
+            int.TryParse(Value("--height"), out int h) ? h : 900,
+            args.Contains("--gallery"));
     }
 }
 

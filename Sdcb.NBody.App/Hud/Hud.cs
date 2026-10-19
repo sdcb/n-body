@@ -34,7 +34,10 @@ internal sealed class HudModel
 internal sealed class Hud(HudCanvas c)
 {
     private float _galleryT, _helpT, _hudT = 1, _attractT;
-    private float _galleryScroll;
+    private float _galleryScroll, _galleryScrollGoal;
+    private bool _galleryWasOpen, _scrollToCurrent;
+    private int _previewIndex = -1;
+    private float _previewT;
     public int SelectedIndex { get; private set; } = -1;
 
     // Segoe Fluent / MDL2 glyphs
@@ -51,15 +54,24 @@ internal sealed class Hud(HudCanvas c)
         _hudT += ((m.ShowHud ? 1 : 0) - _hudT) * k;
         _attractT += ((m.Attract ? 1 : 0) - _attractT) * (1 - MathF.Exp(-dt * 3));
 
+        _compact = c.Width < 1000 || c.Height < 600;
+        _showStats = c.Width >= 680;
+
         DrawLabels(m);
         DrawSandboxDrag(m);
         DrawTitleCard(m);
 
+        // opening the gallery: jump the list so the current scenario is centred
+        if (m.Gallery && !_galleryWasOpen) _scrollToCurrent = true;
+        _galleryWasOpen = m.Gallery;
+        _galleryScroll += (_galleryScrollGoal - _galleryScroll) * (1 - MathF.Exp(-dt * 14));
+
         float uiAlpha = _hudT * (1 - _attractT);
         if (uiAlpha > 0.01f)
         {
-            DrawTitleBlock(m, uiAlpha);
-            DrawStats(m, uiAlpha);
+            // the gallery drawer and the title block share the top-left corner: one slides out as the other slides in
+            if (_galleryT < 0.99f) DrawTitleBlock(m, uiAlpha * (1 - _galleryT), -_galleryT * 60);
+            if (_showStats) DrawStats(m, uiAlpha);
             HudAction a = DrawTransport(m, uiAlpha);
             if (a != HudAction.None) action = a;
             if (_galleryT > 0.01f)
@@ -74,13 +86,29 @@ internal sealed class Hud(HudCanvas c)
         return action;
     }
 
-    private void DrawTitleBlock(HudModel m, float a)
+    // responsive layout, recomputed every frame from the canvas size (DIPs)
+    private bool _compact, _showStats = true;
+    private float Margin => c.Width < 760 ? 14 : 28;
+    private float Top => _compact ? 16 : 26;
+    private float StatsWidth => _compact ? 236 : 290;
+    private float ButtonSize => _compact ? 34 : 40;
+    private float TransportTop => c.Height - ButtonSize - 16 - (_compact ? 22 : 28);
+
+    /// <summary>Title block width that never collides with the stats panel on the right.</summary>
+    private float TitleWidth => _showStats
+        ? Math.Clamp(c.Width - StatsWidth - Margin * 3, 240, 430)
+        : Math.Min(430, c.Width - Margin * 2);
+
+    private void DrawTitleBlock(HudModel m, float a, float offsetX)
     {
-        float x = 28, y = 26, w = 430;
-        IDWriteTextFormat desc = c.Format(14, FontWeight.Normal, wrap: true);
+        if (a <= 0.01f) return;
+        float x = Margin + offsetX, y = Top, w = TitleWidth;
+        float nameSize = _compact ? 23 : 30;
+        IDWriteTextFormat desc = c.Format(_compact ? 13 : 14, FontWeight.Normal, wrap: true);
         string d = Loc.Description(m.Info);
         float dh = c.Measure(d, desc, w - 44).Y;
-        float h = 152 + dh;
+        float nameH = nameSize * 1.45f;
+        float h = 92 + nameH + 10 + dh;
         c.Glass(x, y, w, h, 18, a);
 
         // wordmark
@@ -93,14 +121,14 @@ internal sealed class Hud(HudCanvas c)
         c.Text(cat, x + 22, y + 58, w - 44, 18, c.Format(12, FontWeight.SemiBold), HudCanvas.Warm, a);
         c.Text($"{m.ScenarioIndex + 1:00} / {m.ScenarioCount:00}", x + 22, y + 58, w - 44, 18,
             c.Format(12, FontWeight.Normal, TextAlignment.Trailing, family: c.MonoFont), HudCanvas.TextDim, a);
-        c.Text(Loc.Name(m.Info), x + 22, y + 78, w - 44, 44, c.Format(30, FontWeight.SemiBold), HudCanvas.TextPrimary, a);
-        c.Text(d, x + 22, y + 128, w - 44, dh + 4, desc, HudCanvas.TextSecondary, a * 0.9f);
+        c.Text(Loc.Name(m.Info), x + 22, y + 78, w - 44, nameH, c.Format(nameSize, FontWeight.SemiBold), HudCanvas.TextPrimary, a);
+        c.Text(d, x + 22, y + 78 + nameH + 6, w - 44, dh + 4, desc, HudCanvas.TextSecondary, a * 0.9f);
     }
 
     private void DrawStats(HudModel m, float a)
     {
-        float w = 290, x = c.Width - w - 28, y = 26;
-        bool showEnergy = !m.Gpu && m.EnergyHistoryCount > 1;
+        float w = StatsWidth, x = c.Width - w - Margin, y = Top;
+        bool showEnergy = !m.Gpu && m.EnergyHistoryCount > 1 && c.Height >= 560;
         int rows = 5 + (m.Period.HasValue ? 1 : 0) + (m.ChaosSeparation.HasValue ? 1 : 0) + (m.FollowName != null ? 1 : 0);
         float h = 30 + rows * 24 + (showEnergy ? 70 : 0) + 8;
         c.Glass(x, y, w, h, 18, a);
@@ -114,7 +142,7 @@ internal sealed class Hud(HudCanvas c)
             c.Text(v, x + 20, ry, w - 40, 20, val, color ?? HudCanvas.TextPrimary, a);
             ry += 24;
         }
-        Row(Loc.T("fps"), $"{m.Fps:0}  ·  {m.FrameMs:0.0} ms");
+        Row(Loc.T("fps"), _compact ? $"{m.Fps:0}" : $"{m.Fps:0}  ·  {m.FrameMs:0.0} ms");
         Row(Loc.T(m.Gpu ? "particles" : "bodies"), m.Bodies.ToString("N0"));
         Row(m.Gpu ? Loc.T("gpu") : Loc.T("integrator"), m.Gpu ? "Leapfrog · HLSL" : m.Integrator, HudCanvas.Accent);
         Row(Loc.T("time"), FormatTime(m.SimTime, m.Info.Category));
@@ -161,9 +189,9 @@ internal sealed class Hud(HudCanvas c)
     private HudAction DrawTransport(HudModel m, float a)
     {
         HudAction act = HudAction.None;
-        const float bh = 40, gap = 4;
+        float bh = ButtonSize, gap = _compact ? 2 : 4;
         string speed = m.Paused ? Loc.T("paused") : $"×{m.TimeScale:0.##}";
-        float speedW = 86;
+        float speedW = _compact ? 64 : 86;
         (string icon, HudAction action, bool active)[] left =
         [
             (IcPrev, HudAction.Prev, false), (m.Paused ? IcPlay : IcPause, HudAction.TogglePause, false), (IcNext, HudAction.Next, false),
@@ -174,8 +202,16 @@ internal sealed class Hud(HudCanvas c)
             (IcGallery, HudAction.ToggleGallery, m.Gallery), (IcGlobe, HudAction.ToggleLang, false), (m.Muted ? IcMute : IcVolume, HudAction.ToggleMute, false),
             (IcCamera, HudAction.Screenshot, false), (IcFull, HudAction.Fullscreen, false), (IcHelp, HudAction.ToggleHelp, m.Help),
         ];
-        float w = 16 + (left.Length + right.Length + 2) * (bh + gap) + speedW + 24 + 16;
-        float x = (c.Width - w) / 2, y = c.Height - bh - 16 - 28;
+        // drop secondary buttons (they all have keyboard shortcuts) until the bar fits the window
+        HudAction[] dropOrder = [HudAction.Fullscreen, HudAction.Screenshot, HudAction.ToggleMute, HudAction.ToggleLang, HudAction.CycleIntegrator, HudAction.Reset];
+        float BarWidth() => 16 + (left.Length + right.Length + 2) * (bh + gap) + speedW + 24 + 16;
+        foreach (HudAction drop in dropOrder)
+        {
+            if (BarWidth() <= c.Width - Margin * 2) break;
+            right = [.. right.Where(b => b.action != drop)];
+        }
+        float w = BarWidth();
+        float x = (c.Width - w) / 2, y = TransportTop;
         c.Glass(x, y, w, bh + 16, 20, a);
         float cx = x + 8;
         foreach (var b in left)
@@ -199,32 +235,47 @@ internal sealed class Hud(HudCanvas c)
         }
 
         string hint = m.Sandbox ? Loc.T("sandbox.hint") : m.ChaosSeparation.HasValue ? Loc.T("chaos.hint") : Loc.T("hint.bar");
-        c.Text(hint, 0, y + bh + 20, c.Width, 20, c.Format(12, FontWeight.Normal, TextAlignment.Center), HudCanvas.TextDim, a * 0.9f);
+        c.Text(hint, 0, y + bh + (_compact ? 18 : 20), c.Width, 20, c.Format(_compact ? 11 : 12, FontWeight.Normal, TextAlignment.Center), HudCanvas.TextDim, a * 0.9f);
         return act;
     }
 
     private HudAction DrawGallery(HudModel m, float t)
     {
         HudAction act = HudAction.None;
-        float w = 360, x = 28 - (1 - t) * (w + 40), y = 26, h = c.Height - 26 - 120;
+        float w = Math.Min(TitleWidth, 380), x = Margin - (1 - t) * (w + 40), y = Top, h = TransportTop - 14 - Top;
         c.Glass(x, y, w, h, 18, t);
-        c.Text(Loc.T("gallery"), x + 22, y + 16, w - 44, 26, c.Format(18, FontWeight.SemiBold), HudCanvas.TextPrimary, t);
-        c.Text("G", x + 22, y + 18, w - 44, 22, c.Format(12, FontWeight.Normal, TextAlignment.Trailing, family: c.MonoFont), HudCanvas.TextDim, t);
 
-        float listTop = y + 56, listH = h - 66;
+        // header: wordmark stays in the same place as in the title block, so the swap feels continuous
+        c.Text("N · B O D Y", x + 22, y + 18, 200, 20, c.Format(13, FontWeight.Bold), HudCanvas.Accent, t);
+        c.Text($"{Loc.T("gallery")} · {ScenarioRegistry.All.Count}", x + 22, y + 18, w - 44, 20,
+            c.Format(13, FontWeight.Normal, TextAlignment.Trailing), HudCanvas.TextDim, t);
+        c.Line(new Vector2(x + 22, y + 46), new Vector2(x + w - 22, y + 46), new Color4(1, 1, 1, 1), 1, 0.08f * t);
+
+        // footer: live preview of the hovered (or current) scenario
+        float footerH = h > 480 ? 150 : 72;
+        float listTop = y + 52, listH = h - 52 - footerH;
         bool over = HudCanvas.Contains(x, listTop, w, listH, c.Mouse);
-        if (over && c.Wheel != 0) { _galleryScroll -= c.Wheel * 60; c.WheelUsed = true; }
+        if (over && c.Wheel != 0) { _galleryScrollGoal -= c.Wheel * 68; c.WheelUsed = true; }
 
         IReadOnlyList<Scenario> all = ScenarioRegistry.All;
-        // compute content height
-        float contentH = 0;
+        const float row = 34;
+        float contentH = 0, currentY = 0;
         ScenarioCategory? lastCat = null;
-        foreach (Scenario s in all)
+        for (int i = 0; i < all.Count; ++i)
         {
-            if (s.Info.Category != lastCat) { contentH += 34; lastCat = s.Info.Category; }
-            contentH += 34;
+            if (all[i].Info.Category != lastCat) { contentH += row; lastCat = all[i].Info.Category; }
+            if (i == m.ScenarioIndex) currentY = contentH;
+            contentH += row;
         }
-        _galleryScroll = Math.Clamp(_galleryScroll, 0, Math.Max(0, contentH - listH));
+        float maxScroll = Math.Max(0, contentH - listH + 8);
+        if (_scrollToCurrent)
+        {
+            _galleryScrollGoal = _galleryScroll = Math.Clamp(currentY - listH / 2 + row / 2, 0, maxScroll);
+            _scrollToCurrent = false;
+        }
+        _galleryScrollGoal = Math.Clamp(_galleryScrollGoal, 0, maxScroll);
+        _galleryScroll = Math.Clamp(_galleryScroll, 0, maxScroll);
+        int hovered = -1;
 
         float cy = listTop - _galleryScroll;
         lastCat = null;
@@ -250,11 +301,32 @@ internal sealed class Hud(HudCanvas c)
                 if (current) c.FillRounded(x + 14, cy + 9, 3, 14, 1.5f, HudCanvas.Accent, t * fa);
                 c.Text(Loc.Name(info), x + 26, cy, w - 52, 32, itemF, current ? HudCanvas.Accent : hot ? HudCanvas.TextPrimary : HudCanvas.TextSecondary, t * fa);
                 if (hot && c.MouseReleased && t > 0.8f) { SelectedIndex = i; act = HudAction.Select; }
-                if (hot) c.MarkHot();
+                if (hot) { c.MarkHot(); hovered = i; }
             }
             cy += 34;
         }
+
+        DrawPreview(m, all, hovered, x, y + h - footerH, w, footerH, t);
         return act;
+    }
+
+    private void DrawPreview(HudModel m, IReadOnlyList<Scenario> all, int hovered, float x, float y, float w, float h, float t)
+    {
+        int idx = hovered >= 0 ? hovered : m.ScenarioIndex;
+        if (idx != _previewIndex) { _previewIndex = idx; _previewT = 0; }
+        _previewT = MathF.Min(1, _previewT + 0.12f);
+        float a = t * (0.35f + 0.65f * _previewT);
+        float slide = (1 - _previewT) * 6;
+
+        c.Line(new Vector2(x + 22, y), new Vector2(x + w - 22, y), new Color4(1, 1, 1, 1), 1, 0.08f * t);
+        ScenarioInfo info = all[idx].Info;
+        bool current = idx == m.ScenarioIndex;
+        string tag = current ? (Loc.Current == Lang.Zh ? "正在播放" : "NOW PLAYING") : Loc.Category(info.Category).ToUpperInvariant();
+        c.Text(tag, x + 22, y + 12 + slide, w - 44, 18, c.Format(11, FontWeight.SemiBold), current ? HudCanvas.Accent : HudCanvas.Warm, a);
+        c.Text(Loc.Name(info), x + 22, y + 30 + slide, w - 44, 28, c.Format(19, FontWeight.SemiBold), HudCanvas.TextPrimary, a);
+        if (h < 100) return;
+        IDWriteTextFormat desc = c.Format(12.5f, FontWeight.Normal, wrap: true);
+        c.Text(Loc.Description(info), x + 22, y + 60 + slide, w - 44, h - 68, desc, HudCanvas.TextSecondary, a * 0.9f);
     }
 
     private static float Fade(float y, float top, float h)
@@ -317,13 +389,17 @@ internal sealed class Hud(HudCanvas c)
 
     private void DrawTitleCard(HudModel m)
     {
-        float a = m.TitleCard;
+        // the big centred title only plays when the panels are out of the way (attract mode / hidden HUD);
+        // otherwise the title block already announces the scenario and the card would sit on top of the panels
+        float a = m.TitleCard * MathF.Max(_attractT, 1 - _hudT);
         if (a <= 0.01f) return;
+        float size = Math.Clamp(c.Width / 16f, 30, 56);
         float y = c.Height * 0.40f;
         c.Text(Loc.Category(m.Info.Category).ToUpperInvariant(), 0, y - 34, c.Width, 24, c.Format(15, FontWeight.SemiBold, TextAlignment.Center), HudCanvas.Warm, a);
-        c.Text(Loc.Name(m.Info), 0, y - 6, c.Width, 80, c.Format(56, FontWeight.Light, TextAlignment.Center), HudCanvas.TextPrimary, a);
+        c.Text(Loc.Name(m.Info), 0, y - 6, c.Width, size * 1.45f, c.Format(size, FontWeight.Light, TextAlignment.Center), HudCanvas.TextPrimary, a);
         float lw = 120 * a;
-        c.Line(new Vector2(c.Width / 2 - lw, y + 86), new Vector2(c.Width / 2 + lw, y + 86), HudCanvas.Accent, 1.5f, a * 0.8f);
+        float ly = y + size * 1.45f + 4;
+        c.Line(new Vector2(c.Width / 2 - lw, ly), new Vector2(c.Width / 2 + lw, ly), HudCanvas.Accent, 1.5f, a * 0.8f);
     }
 
     private void DrawLabels(HudModel m)
