@@ -35,7 +35,7 @@ jobs:
         shell: pwsh
         run: |
           Remove-Item publish\*.pdb
-          Compress-Archive -Path publish\NBody.exe, README.md, LICENSE.txt -DestinationPath NBody-win-x64.zip
+          Compress-Archive -Path publish\NBody.exe, README.md, README.en.md, LICENSE.txt -DestinationPath NBody-win-x64.zip
 
       - uses: actions/upload-artifact@v4
         with:

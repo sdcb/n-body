@@ -1,85 +1,85 @@
-# N·Body — 引力的交响 / A Gravitational Symphony
+# N·Body — 引力的交响
 
-A real-time 3D gravity simulator for Windows, built on Direct3D 11 compute shaders, HDR bloom and a frosted-glass HUD.
+**中文** | [English](README.en.md)
 
-一个基于 Direct3D 11 计算着色器、HDR 泛光和毛玻璃界面的实时 3D 引力模拟器。
+一个基于 Direct3D 11 计算着色器、HDR 泛光和毛玻璃界面的 Windows 实时 3D 引力模拟器。
 
-![Galaxy collision](docs/galaxy-collision.jpg)
+![星系碰撞](docs/galaxy-collision.jpg)
 
 | | |
 |---|---|
-| ![Butterfly I](docs/butterfly-1.jpg) | ![Solar system](docs/solar-system.jpg) |
-| ![Butterfly effect](docs/chaos-twins.jpg) | ![Protoplanetary disk](docs/protoplanetary-disk.jpg) |
+| ![蝴蝶 I](docs/butterfly-1.jpg) | ![太阳系](docs/solar-system.jpg) |
+| ![蝴蝶效应](docs/chaos-twins.jpg) | ![原行星盘](docs/protoplanetary-disk.jpg) |
 
-## 特性 · Features
+## 特性
 
-- **35 个场景，7 个类别 / 35 scenarios in 7 categories**
-  - **星系 / Galaxies**: galaxy collision, Milky Way × Andromeda, a self-gravitating spiral. Up to 65k particles, computed with O(N²) direct summation on the GPU (tiled HLSL compute shader, leapfrog). Dark-matter halos and dynamical friction let the galaxies actually merge.
-  - **三体周期解 / Periodic three-body**: Figure-8, the Šuvakov–Dmitrašinović family (butterflies, moths, dragonfly, yin-yang, bumblebee, yarn…), Broucke, Hénon, Lagrange.
-  - **编舞与星环 / Choreographies**: rigidly rotating rings of 4, 6 and 12 bodies, and a moonlet ring.
-  - **行星系统 / Planetary systems**: the real Solar System from JPL J2000 elements (G = 4π², AU, years), the inner Solar System, and a circumbinary "Tatooine" system.
-  - **星团与盘 / Clusters & disks**: Plummer globular cluster, cold collapse, a protoplanetary disk with gap-carving planets.
-  - **混沌 / Chaos**: the butterfly effect (two Pythagorean three-body systems whose initial conditions differ by 10⁻⁹) and the Pythagorean problem itself.
-  - **沙盒 / Sandbox**: Shift + drag to launch new bodies; colliding bodies merge.
-- **物理核心 / Physics core** (`Sdcb.NBody`, platform-independent, AOT-compatible): Structure-of-Arrays layout, SIMD plus parallel force summation, Plummer softening, and four integrators (Leapfrog, Yoshida 4, RK4, adaptive Dormand–Prince 5(4)). Energy, momentum and angular momentum are tracked live, with an energy-drift chart in the HUD.
-- **视觉 / Visuals**: procedural starfield and nebula, HDR rendering, physically-inspired bloom, ACES tonemapping, fading GPU trails, stars with corona and diffraction spikes, lit planets with atmospheres, black holes with Doppler-beamed accretion disks.
-- **体验 / Experience**: launches into a cinematic attract mode (auto camera, scenario carousel); bilingual zh/en UI switchable at runtime; procedurally synthesized ambient soundtrack (no audio assets); F12 screenshots; automatic quality tiers per GPU.
-- **工程 / Engineering**: native Win32 window, no WinForms; Native AOT single-file exe (~3 MB); xUnit tests; GitHub Actions CI and releases.
+- **7 个类别，共 35 个场景**
+  - **星系**：星系碰撞、银河系 × 仙女座星系、自引力旋涡星系。最多 65k 个粒子，在 GPU 上以 O(N²) 直接求和计算（分块 HLSL 计算着色器 + 蛙跳积分）。暗物质晕与动力学摩擦让星系能够真正合并。
+  - **三体周期解**：8 字形解、Šuvakov–Dmitrašinović 族（蝴蝶、飞蛾、蜻蜓、阴阳、大黄蜂、毛线团……）、Broucke、Hénon、拉格朗日解。
+  - **编舞与星环**：4、6、12 体刚性旋转环，以及小卫星环。
+  - **行星系统**：基于 JPL J2000 轨道根数的真实太阳系（G = 4π²，单位为 AU、年）、内太阳系，以及环双星的“塔图因”系统。
+  - **星团与盘**：Plummer 球状星团、冷坍缩、带有行星开辟空隙的原行星盘。
+  - **混沌**：蝴蝶效应（两个初始条件仅相差 10⁻⁹ 的毕达哥拉斯三体系统）以及毕达哥拉斯三体问题本身。
+  - **沙盒**：Shift + 拖动发射新天体；碰撞的天体会合并。
+- **物理核心**（`Sdcb.NBody`，平台无关，兼容 AOT）：结构数组（SoA）布局，SIMD 加并行的引力求和，Plummer 软化，以及四种积分器（Leapfrog、Yoshida 4、RK4、自适应 Dormand–Prince 5(4)）。实时跟踪能量、动量和角动量，HUD 中带有能量漂移曲线。
+- **视觉**：程序化生成的星空与星云、HDR 渲染、基于物理的泛光、ACES 色调映射、渐隐的 GPU 轨迹、带日冕和衍射星芒的恒星、带大气层的受光行星、带多普勒增亮吸积盘的黑洞。
+- **体验**：启动后进入电影式演示模式（自动镜头、场景轮播）；运行时可切换的中英双语界面；程序化合成的环境配乐（无音频资源文件）；F12 截图；按 GPU 自动选择画质档位。
+- **工程**：原生 Win32 窗口，不依赖 WinForms；Native AOT 单文件 exe（约 3 MB）；xUnit 测试；GitHub Actions 持续集成与发布。
 
-## 操作 · Controls
+## 操作
 
-| 输入 / Input | 功能 / Action |
+| 输入 | 功能 |
 |---|---|
-| 左键拖动 / Left drag | 旋转视角 / Orbit camera |
-| 右键或中键拖动 / Right or middle drag | 平移 / Pan |
-| 滚轮 / Wheel | 缩放 / Zoom |
-| 双击天体 / Double-click a body | 跟随 / Follow |
-| `Space` | 暂停 / Pause |
-| `←` `→` | 切换场景 / Previous or next scenario |
-| `↑` `↓` | 加速 / 减速 (Faster / slower) |
-| `G` | 场景画廊 / Scenario gallery |
-| `I` | 切换积分器 / Cycle integrator |
-| `T` | 轨迹开关 / Toggle trails |
-| `R` | 重置 / Reset |
-| `F` | 自动取景 / Re-frame camera |
-| `Tab` | 隐藏界面 / Hide HUD |
+| 左键拖动 | 旋转视角 |
+| 右键或中键拖动 | 平移 |
+| 滚轮 | 缩放 |
+| 双击天体 | 跟随 |
+| `Space` | 暂停 |
+| `←` `→` | 上一个 / 下一个场景 |
+| `↑` `↓` | 加速 / 减速 |
+| `G` | 场景画廊 |
+| `I` | 切换积分器 |
+| `T` | 轨迹开关 |
+| `R` | 重置 |
+| `F` | 自动取景 |
+| `Tab` | 隐藏界面 |
 | `L` | 中文 / English |
-| `M` | 静音 / Mute |
-| `F11` | 全屏 / Fullscreen |
-| `F12` | 截图（保存到“图片\N-Body”）/ Screenshot (saved to Pictures\N-Body) |
-| `H` | 帮助 / Help |
-| `Esc` | 退出 / Quit |
+| `M` | 静音 |
+| `F11` | 全屏 |
+| `F12` | 截图（保存到“图片\N-Body”） |
+| `H` | 帮助 |
+| `Esc` | 退出 |
 
-## 构建 · Build
+## 构建
 
-Requirements: Windows 10+, .NET 10 SDK, and a D3D11 GPU (feature level 11.0).
+环境要求：Windows 10 及以上、.NET 10 SDK，以及支持 D3D11（特性级别 11.0）的显卡。
 
 ```powershell
-dotnet run --project Sdcb.NBody.App                 # run (fullscreen)
-dotnet run --project Sdcb.NBody.App -- --windowed   # run in a window
-dotnet test Sdcb.NBody.Tests                        # unit tests
-dotnet publish Sdcb.NBody.App -c Release -r win-x64 # Native AOT single exe
+dotnet run --project Sdcb.NBody.App                 # 运行（全屏）
+dotnet run --project Sdcb.NBody.App -- --windowed   # 窗口模式运行
+dotnet test Sdcb.NBody.Tests                        # 单元测试
+dotnet publish Sdcb.NBody.App -c Release -r win-x64 # Native AOT 单文件 exe
 ```
 
-Command-line options:
+命令行参数：
 
 ```text
---windowed                start in a window
---scenario <id>           start directly in a scenario (e.g. galaxy-collision, figure-8)
---capture <file.png>      render to a PNG after --capture-at seconds, then exit
---check-shaders           compile every shader and report errors
+--windowed                以窗口模式启动
+--scenario <id>           直接进入指定场景（如 galaxy-collision、figure-8）
+--capture <file.png>      在 --capture-at 秒后渲染为 PNG，然后退出
+--check-shaders           编译所有着色器并报告错误
 ```
 
-Set the environment variable `NBODY_QUALITY` to `ultra`, `high`, `medium` or `low` to override the automatic quality tier.
+设置环境变量 `NBODY_QUALITY` 为 `ultra`、`high`、`medium` 或 `low` 可覆盖自动画质档位。
 
-## 项目结构 · Layout
+## 项目结构
 
 ```text
-Sdcb.NBody/          physics core: BodySet, ForceModel, integrators, Simulation, Scenarios/
-Sdcb.NBody.App/      renderer: Win32 window, D3D11 device, HLSL shaders, HUD, audio
-Sdcb.NBody.Tests/    xUnit tests: conservation laws, periodic-orbit regression, scenario sanity
+Sdcb.NBody/          物理核心：BodySet、ForceModel、积分器、Simulation、Scenarios/
+Sdcb.NBody.App/      渲染器：Win32 窗口、D3D11 设备、HLSL 着色器、HUD、音频
+Sdcb.NBody.Tests/    xUnit 测试：守恒律、周期轨道回归、场景合理性检查
 ```
 
-## License
+## 许可证
 
-MIT
+[MIT](LICENSE.txt)
