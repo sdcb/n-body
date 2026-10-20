@@ -4,7 +4,18 @@ on:
   push:
     branches: [master, main]
     tags: ['v*']
+    # Path filters are not evaluated for tag pushes, so releases always build.
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE.txt'
+      - '.gitignore'
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE.txt'
+      - '.gitignore'
 
 permissions:
   contents: write
