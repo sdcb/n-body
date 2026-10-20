@@ -1,4 +1,4 @@
-# N·Body — A Gravitational Symphony
+# N·Body — A Gravitational Symphony [![QQ](https://img.shields.io/badge/QQ_Group-495782587-52B6EF?style=social&logo=tencent-qq&logoColor=000&logoWidth=20)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=mma4msRKd372Z6dWpmBp4JZ9RL4Jrf8X&authKey=gccTx0h0RaH5b8B8jtuPJocU7MgFRUznqbV%2FLgsKdsK8RqZE%2BOhnETQ7nYVTp1W0&noverify=0&group_code=495782587)
 
 [中文](README.md) | **English**
 
@@ -79,6 +79,12 @@ Sdcb.NBody/          physics core: BodySet, ForceModel, integrators, Simulation,
 Sdcb.NBody.App/      renderer: Win32 window, D3D11 device, HLSL shaders, HUD, audio
 Sdcb.NBody.Tests/    xUnit tests: conservation laws, periodic-orbit regression, scenario sanity
 ```
+
+## WeChat group
+
+![](https://io.starworks.cc:88/cv-public/2026/ocr-wxg-qr.png?1012)
+
+If the WeChat QR code has expired, join the QQ group [.NET骚操作 495782587](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=mma4msRKd372Z6dWpmBp4JZ9RL4Jrf8X&authKey=gccTx0h0RaH5b8B8jtuPJocU7MgFRUznqbV%2FLgsKdsK8RqZE%2BOhnETQ7nYVTp1W0&noverify=0&group_code=495782587).
 
 ## License
 

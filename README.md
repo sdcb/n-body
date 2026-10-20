@@ -1,4 +1,4 @@
-# N·Body — 引力的交响
+# N·Body — 引力的交响 [![QQ](https://img.shields.io/badge/QQ_Group-495782587-52B6EF?style=social&logo=tencent-qq&logoColor=000&logoWidth=20)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=mma4msRKd372Z6dWpmBp4JZ9RL4Jrf8X&authKey=gccTx0h0RaH5b8B8jtuPJocU7MgFRUznqbV%2FLgsKdsK8RqZE%2BOhnETQ7nYVTp1W0&noverify=0&group_code=495782587)
 
 **中文** | [English](README.en.md)
 
@@ -79,6 +79,12 @@ Sdcb.NBody/          物理核心：BodySet、ForceModel、积分器、Simulatio
 Sdcb.NBody.App/      渲染器：Win32 窗口、D3D11 设备、HLSL 着色器、HUD、音频
 Sdcb.NBody.Tests/    xUnit 测试：守恒律、周期轨道回归、场景合理性检查
 ```
+
+## 微信群
+
+![](https://io.starworks.cc:88/cv-public/2026/ocr-wxg-qr.png?1012)
+
+如果微信群二维码过期了，请加入 QQ 群 [.NET骚操作 495782587](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=mma4msRKd372Z6dWpmBp4JZ9RL4Jrf8X&authKey=gccTx0h0RaH5b8B8jtuPJocU7MgFRUznqbV%2FLgsKdsK8RqZE%2BOhnETQ7nYVTp1W0&noverify=0&group_code=495782587)。
 
 ## 许可证
 
