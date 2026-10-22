@@ -82,7 +82,7 @@ Sdcb.NBody.Tests/    xUnit tests: conservation laws, periodic-orbit regression, 
 
 ## WeChat group
 
-![](https://io.starworks.cc:88/cv-public/2026/ocr-wxg-qr.png?1020)
+![](https://io.starworks.cc:88/cv-public/2026/ocr-wxg-qr.png?1022)
 
 If the WeChat QR code has expired, join the QQ group [.NET骚操作 495782587](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=mma4msRKd372Z6dWpmBp4JZ9RL4Jrf8X&authKey=gccTx0h0RaH5b8B8jtuPJocU7MgFRUznqbV%2FLgsKdsK8RqZE%2BOhnETQ7nYVTp1W0&noverify=0&group_code=495782587).
 

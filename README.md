@@ -82,7 +82,7 @@ Sdcb.NBody.Tests/    xUnit 测试：守恒律、周期轨道回归、场景合�
 
 ## 微信群
 
-![](https://io.starworks.cc:88/cv-public/2026/ocr-wxg-qr.png?1020)
+![](https://io.starworks.cc:88/cv-public/2026/ocr-wxg-qr.png?1022)
 
 如果微信群二维码过期了，请加入 QQ 群 [.NET骚操作 495782587](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=mma4msRKd372Z6dWpmBp4JZ9RL4Jrf8X&authKey=gccTx0h0RaH5b8B8jtuPJocU7MgFRUznqbV%2FLgsKdsK8RqZE%2BOhnETQ7nYVTp1W0&noverify=0&group_code=495782587)。
 
